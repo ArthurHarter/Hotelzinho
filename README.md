@@ -1,6 +1,6 @@
 # Hotelzinho
 
-Sistema web para hotel e creche de cães: agenda de reservas, controle de vacinas, gerador de contrato e calculadora de diária.
+Sistema web para hotel e creche de cães com plano Grátis (5 pets, 10 reservas) e plano Plus (ilimitado, WhatsApp, painel de vencimentos, relatório e contrato sem marca). O Plus é simulado nesta versão.
 
 **Estado atual:** protótipo front-end. Os dados ficam no `localStorage` do navegador (sem login, banco ou pagamento).
 
