@@ -1,0 +1,13 @@
+# Backup noturno do banco. ATENÇÃO: use repositório PRIVADO, pois o dump contém dados de clientes.
+name: backup-banco
+on:
+  schedule: [{ cron: "0 5 * * *" }]   # 02:00 em Brasília
+  workflow_dispatch:
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: pg_dump "${{ secrets.SUPABASE_DB_URL }}" --no-owner -Fc -f backup.dump
+      - uses: actions/upload-artifact@v4
+        with: { name: backup-${{ github.run_id }}, path: backup.dump, retention-days: 30 }

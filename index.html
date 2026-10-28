@@ -46,7 +46,24 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu)}t
 .plan.pl{border:2px solid var(--ac)}.price{font:700 2rem Georgia,serif}.plan ul{padding-left:18px;margin:12px 0}.plan li{margin:5px 0}.plan li.x{color:var(--mu);text-decoration:line-through}
 details{border-bottom:1px solid var(--bd);padding:12px 0}summary{cursor:pointer;font-weight:600}
 footer{background:var(--nv);color:#9fb1cc;padding:28px 0;margin-top:40px;font-size:13px}
+.hero{position:relative;overflow:hidden}.hero .w{position:relative;z-index:1}
+.fly{position:absolute;inset:0;pointer-events:none}
+.fc{position:absolute;pointer-events:auto;cursor:default;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);border-radius:12px;padding:10px 14px;font-size:13px;color:#dbe6f7;box-shadow:0 10px 30px rgba(0,0,0,.25);transition:transform .3s ease-out,box-shadow .25s,background .25s,scale .25s;animation:fl 6s ease-in-out infinite}
+.fc b{display:block;font-size:19px;color:#fff}
+.fc:hover{background:rgba(255,255,255,.2);box-shadow:0 16px 44px rgba(80,130,255,.55);scale:1.1}
+.fc:nth-child(1){right:7%;top:16%}.fc:nth-child(2){right:20%;top:46%;animation-delay:-2s}.fc:nth-child(3){right:5%;top:68%;animation-delay:-4s}
+@keyframes fl{50%{translate:0 -12px}}
+@media (max-width:900px){.fly{display:none}}
+.rv{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease}.rv.in{opacity:1;transform:none}
+.plan.rv.in{transition:transform .25s,box-shadow .25s,opacity .6s}.plan.rv.in:hover{transform:translateY(-5px);box-shadow:0 14px 34px rgba(10,25,50,.18)}
+.card{transition:box-shadow .2s,border-color .2s}.card:hover{border-color:var(--ac);box-shadow:0 6px 20px rgba(10,25,50,.08)}
+.btn{transition:transform .15s,filter .15s}.btn:hover{transform:translateY(-1px);filter:brightness(1.1)}
+#pg{position:fixed;left:0;top:env(safe-area-inset-top,0px);height:3px;background:var(--ac);width:0;z-index:20}
+nav.top{transition:box-shadow .3s}
+@media (prefers-reduced-motion:reduce){.fc{animation:none}.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
 </style>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <nav class="top"><div class="w"><b>🐾 Hotelzinho</b><a href="#app">App</a><a href="#planos">Planos</a><a href="#faq">FAQ</a></div></nav>
@@ -55,7 +72,9 @@ footer{background:var(--nv);color:#9fb1cc;padding:28px 0;margin-top:40px;font-si
 <h1>Reservas, vacinas e contratos sob controle.</h1>
 <p>Substitua cadernos e planilhas por um sistema feito para hotelzinhos e creches caninas. Comece grátis e evolua para o Plus quando seu negócio crescer.</p>
 <a class="btn" href="#app">Abrir o sistema</a> <a class="btn g" href="#planos">Ver planos</a>
-</div></header>
+</div>
+<div class="fly" aria-hidden="true"><div class="fc"><b>12 reservas</b>hoje no hotelzinho</div><div class="fc"><b>Vacina vence em 3d</b>Thor · Tutor Marcos</div><div class="fc"><b>R$ 4.860</b>receita prevista no mês</div></div>
+</header>
 
 <main class="w">
 <div class="shell" id="app"><div class="bar" id="tabs"></div><div id="msg"></div><section id="v"></section></div>
@@ -66,7 +85,7 @@ footer{background:var(--nv);color:#9fb1cc;padding:28px 0;margin-top:40px;font-si
 <ul><li>Até 5 pets cadastrados</li><li>Até 10 reservas</li><li>Controle de validade de vacinas</li><li>Calculadora de diária</li><li>Contrato com marca Hotelzinho</li><li class="x">Confirmação por WhatsApp</li><li class="x">Painel de vencimentos</li><li class="x">Relatório exportável</li></ul><a class="btn g" href="#app">Usar grátis</a></div>
 <div class="plan pl"><h3>Plus</h3><div class="price">R$ 49<small class="mu" style="font:14px system-ui">/mês</small></div><span class="mu">Para quem vive do hotelzinho</span>
 <ul><li><b>Pets e reservas ilimitados</b></li><li>Confirmação por WhatsApp em 1 clique</li><li>Painel de vencimentos de vacina</li><li>Relatório copiável em CSV</li><li>Contrato sem marca, com seu nome</li><li>Tudo do plano Grátis</li></ul><button class="btn" id="up">Ativar Plus (demonstração)</button>
-<p class="mu" style="font-size:12px">Demonstração: nenhuma cobrança é feita. O pagamento real será integrado na versão com servidor.</p></div>
+<p id="upn" class="mu" style="font-size:12px">Demonstração: nenhuma cobrança é feita. O pagamento real será integrado na versão com servidor.</p></div>
 </div>
 
 <h2 id="faq">Perguntas frequentes</h2>
@@ -79,19 +98,21 @@ footer{background:var(--nv);color:#9fb1cc;padding:28px 0;margin-top:40px;font-si
 
 <script>
 const K='hotelzinho_v2',LP=5,LR=10;let S={pets:[],res:[],plan:'free'},tab='res';
-try{const r=localStorage.getItem(K);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const CFG=window.CFG||{},CLOUD=!!(CFG.SUPABASE_URL&&window.supabase),sb=CLOUD?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;let user=null,rec=false;
+if(!CLOUD)try{const r=localStorage.getItem(K);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const save=()=>{if(CLOUD)return;try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,9),plus=()=>S.plan==='plus';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const brl=n=>(+n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),dt=d=>d?d.split('-').reverse().join('/'):'';
 const days=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5),pet=id=>S.pets.find(p=>p.id===id),today=()=>new Date().toISOString().slice(0,10);
-function gate(t){const m=$('#msg');m.style.display='block';m.innerHTML=t+' <a href="#planos">Conhecer o Plus</a>';setTimeout(()=>m.style.display='none',6000)}
+function gate(t,n){const m=$('#msg');m.style.display='block';m.innerHTML=esc(t)+(n?'':' <a href="#planos">Conhecer o Plus</a>');setTimeout(()=>m.style.display='none',6000)}
 function vac(p,ref){if(!p.vac)return['sem data','wn'];const d=days(ref||today(),p.vac);return d<0?['vencida','er']:d<=30?['vence em '+d+'d','wn']:['em dia','ok']}
 function total(r){const n=days(r.ini,r.fim);return(r.tipo==='Creche'?n+1:Math.max(1,n))*r.val}
 const TABS=[['res','Reservas'],['pets','Pets e vacinas'],['tools','Ferramentas']];
-function render(){$('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="t" role="tab" aria-selected="${tab===k}" data-t="${k}">${l}</button>`).join('')+`<span class="pill ${plus()?'plus':''}">${plus()?'PLUS':'GRÁTIS · '+S.pets.length+'/'+LP+' pets · '+S.res.length+'/'+LR+' reservas'}</span>`;
+function render(){if(CLOUD&&(!user||rec))return vAuth();$('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="t" role="tab" aria-selected="${tab===k}" data-t="${k}">${l}</button>`).join('')+`<span class="pill ${plus()?'plus':''}">${plus()?'PLUS':'GRÁTIS · '+S.pets.length+'/'+LP+' pets · '+S.res.length+'/'+LR+' reservas'}</span>`+(CLOUD?'<button class="t" id="so">Sair</button>':'');
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});({res:vRes,pets:vPets,tools:vTools})[tab]();
-$('#up').textContent=plus()?'Voltar ao plano Grátis (demo)':'Ativar Plus (demonstração)'}
+$('#up').textContent=CLOUD?(plus()?'Plano Plus ativo':'Assinar o Plus'):(plus()?'Voltar ao plano Grátis (demo)':'Ativar Plus (demonstração)');$('#upn').style.display=CLOUD?'none':'';
+if(CLOUD)$('#so').onclick=()=>sb.auth.signOut()}
 function vRes(){const rev=S.res.reduce((a,r)=>a+total(r),0);
 $('#v').innerHTML=`<div class="grid"><div class="card"><div class="stat">${S.res.length}</div><span class="mu">reservas</span></div><div class="card"><div class="stat">${brl(rev)}</div><span class="mu">receita prevista</span></div></div>
 <div class="card"><h3>Nova reserva</h3>${S.pets.length?`<form class="grid" onsubmit="return false"><div><label>Pet</label><select id="rp">${S.pets.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div><div><label>Tipo</label><select id="rt"><option>Hotel</option><option>Creche</option></select></div><div><label>Entrada</label><input id="ri" type="date"></div><div><label>Saída</label><input id="rf" type="date"></div><div><label>Diária (R$)</label><input id="rv" type="number" min="0" value="80"></div><div style="align-self:end"><button class="btn" id="ra">Adicionar</button></div></form><p class="er" id="re"></p>`:'<p class="mu">Cadastre um pet primeiro na aba Pets e vacinas.</p>'}</div>
@@ -99,16 +120,16 @@ $('#v').innerHTML=`<div class="grid"><div class="card"><div class="stat">${S.res
 const ra=$('#ra');if(ra)ra.onclick=()=>{const r={id:uid(),pid:$('#rp').value,tipo:$('#rt').value,ini:$('#ri').value,fim:$('#rf').value,val:+$('#rv').value};
 if(!r.ini||!r.fim||r.fim<r.ini){$('#re').textContent='Confira as datas de entrada e saída.';return}
 if(!plus()&&S.res.length>=LR)return gate('O plano Grátis permite '+LR+' reservas.');
-if(vac(pet(r.pid),r.fim)[1]==='er'&&!confirm('A vacina deste pet vence antes da saída. Salvar mesmo assim?'))return;S.res.push(r);save();render()};
+if(vac(pet(r.pid),r.fim)[1]==='er'&&!confirm('A vacina deste pet vence antes da saída. Salvar mesmo assim?'))return;DB.addRes(r).then(render).catch(e=>gate(e.message))};
 $('#ex').onclick=()=>{if(!plus())return gate('Relatório CSV é um recurso Plus.');const t='pet;tipo;entrada;saida;total\n'+S.res.map(r=>[(pet(r.pid)||{}).nome,r.tipo,r.ini,r.fim,total(r)].join(';')).join('\n');try{navigator.clipboard.writeText(t);gate('Relatório copiado.')}catch(e){}};
-document.querySelectorAll('[data-d]').forEach(a=>a.onclick=e=>{e.preventDefault();S.res=S.res.filter(r=>r.id!==a.dataset.d);save();render()});
+document.querySelectorAll('[data-d]').forEach(a=>a.onclick=e=>{e.preventDefault();DB.delRes(a.dataset.d).then(render)});
 document.querySelectorAll('[data-w]').forEach(a=>a.onclick=e=>{e.preventDefault();if(!plus())return gate('Confirmação por WhatsApp é um recurso Plus.');const r=S.res.find(x=>x.id===a.dataset.w),p=pet(r.pid);window.open('https://wa.me/'+(p.zap||'').replace(/\D/g,'')+'?text='+encodeURIComponent('Olá! Confirmando a reserva de '+p.nome+' ('+r.tipo+') de '+dt(r.ini)+' a '+dt(r.fim)+'. Total: '+brl(total(r))),'_blank','noopener')})}
 function vPets(){const ven=S.pets.filter(p=>vac(p)[1]!=='ok').sort((a,b)=>(a.vac||'')<(b.vac||'')?-1:1);
 $('#v').innerHTML=`<div class="card"><h3>Painel de vencimentos ${plus()?'':'<span class="lock">PLUS</span>'}</h3>${plus()?(ven.length?ven.map(p=>`<div>${esc(p.nome)} · ${esc(p.tutor)} <span class="tag ${vac(p)[1]}">${vac(p)[0]}</span></div>`).join(''):'<span class="mu">Nenhuma vacina vencida ou a vencer em 30 dias.</span>'):'<span class="mu">Veja de uma vez todos os pets com vacina vencida ou perto de vencer.</span>'}</div>
 <div class="card"><h3>Cadastrar pet</h3><form class="grid" onsubmit="return false"><div><label>Nome do pet</label><input id="pn"></div><div><label>Tutor</label><input id="pt"></div><div><label>WhatsApp</label><input id="pz" placeholder="5555999999999"></div><div><label>Validade da vacina</label><input id="pv" type="date"></div><div style="align-self:end"><button class="btn" id="pa">Salvar</button></div></form></div>
 <div class="card sc"><table><thead><tr><th>Pet</th><th>Tutor</th><th>Vacina</th><th></th></tr></thead><tbody>${S.pets.map(p=>{const v=vac(p);return`<tr><td>${esc(p.nome)}</td><td>${esc(p.tutor)}</td><td><span class="tag ${v[1]}">${v[0]}</span> ${dt(p.vac)}</td><td><a href="#" data-x="${p.id}">excluir</a></td></tr>`}).join('')||'<tr><td colspan="4" class="mu">Nenhum pet cadastrado.</td></tr>'}</tbody></table></div>`;
-$('#pa').onclick=()=>{const n=$('#pn').value.trim();if(!n)return;if(!plus()&&S.pets.length>=LP)return gate('O plano Grátis permite '+LP+' pets.');S.pets.push({id:uid(),nome:n,tutor:$('#pt').value,zap:$('#pz').value,vac:$('#pv').value});save();render()};
-document.querySelectorAll('[data-x]').forEach(a=>a.onclick=e=>{e.preventDefault();S.pets=S.pets.filter(p=>p.id!==a.dataset.x);S.res=S.res.filter(r=>r.pid!==a.dataset.x);save();render()})}
+$('#pa').onclick=()=>{const n=$('#pn').value.trim();if(!n)return;if(!plus()&&S.pets.length>=LP)return gate('O plano Grátis permite '+LP+' pets.');DB.addPet({id:uid(),nome:n,tutor:$('#pt').value,zap:$('#pz').value,vac:$('#pv').value}).then(render).catch(e=>gate(e.message))};
+document.querySelectorAll('[data-x]').forEach(a=>a.onclick=e=>{e.preventDefault();DB.delPet(a.dataset.x).then(render)})}
 function vTools(){
 $('#v').innerHTML=`<div class="card"><h3>Calculadora de diária</h3><div class="grid"><div><label>Custos mensais (R$)</label><input id="c1" type="number" value="12000"></div><div><label>Nº de boxes</label><input id="c2" type="number" value="10"></div><div><label>Ocupação média (%)</label><input id="c3" type="number" value="60"></div><div><label>Margem (%)</label><input id="c4" type="number" value="30"></div></div><p>Diária mínima sugerida: <strong class="stat" id="cr"></strong></p></div>
 <div class="card"><h3>Gerador de contrato de hospedagem</h3><div class="grid"><div><label>Seu hotel/creche ${plus()?'':'<span class="lock">PLUS</span>'}</label><input id="k1" value="${plus()?'':'Hotelzinho'}" ${plus()?'':'readonly'}></div><div><label>Tutor</label><input id="k2"></div><div><label>Pet</label><input id="k3"></div><div><label>Valor total (R$)</label><input id="k4" type="number"></div></div><p><button class="btn" id="kg">Gerar contrato</button> <button class="btn g" id="kc">Copiar</button></p><textarea id="ko" rows="12" readonly></textarea></div>`;
@@ -128,8 +149,37 @@ CONTRATADA: ${$('#k1').value||'________'}. TUTOR: ${$('#k2').value}. ANIMAL: ${$
 Local e data: ____________  Assinaturas: ____________
 ${plus()?'':'\n[Gerado pelo plano Grátis do Hotelzinho. Modelo genérico, peça revisão de um advogado.]'}`};
 $('#kc').onclick=()=>{try{navigator.clipboard.writeText($('#ko').value)}catch(e){$('#ko').select()}}}
-$('#up').onclick=()=>{S.plan=plus()?'free':'plus';save();render();document.getElementById('app').scrollIntoView()};
+async function load(){const[p,r,f]=await Promise.all([sb.from('pets').select('*').order('criado_em'),sb.from('reservas').select('*').order('entrada'),sb.from('perfis').select('plano').maybeSingle()]);
+S.pets=(p.data||[]).map(x=>({id:x.id,nome:x.nome,tutor:x.tutor,zap:x.whatsapp,vac:x.vacina_validade||''}));S.res=(r.data||[]).map(x=>({id:x.id,pid:x.pet_id,tipo:x.tipo,ini:x.entrada,fim:x.saida,val:+x.diaria}));S.plan=(f.data&&f.data.plano)||'free'}
+const ck=async q=>{const{error}=await q;if(error)throw error};
+const DB={
+async addPet(p){if(!CLOUD){S.pets.push(p);save();return}await ck(sb.from('pets').insert({nome:p.nome,tutor:p.tutor,whatsapp:p.zap,vacina_validade:p.vac||null}));await load()},
+async delPet(id){if(!CLOUD){S.pets=S.pets.filter(p=>p.id!==id);S.res=S.res.filter(r=>r.pid!==id);save();return}await ck(sb.from('pets').delete().eq('id',id));await load()},
+async addRes(r){if(!CLOUD){S.res.push(r);save();return}await ck(sb.from('reservas').insert({pet_id:r.pid,tipo:r.tipo,entrada:r.ini,saida:r.fim,diaria:r.val}));await load()},
+async delRes(id){if(!CLOUD){S.res=S.res.filter(r=>r.id!==id);save();return}await ck(sb.from('reservas').delete().eq('id',id));await load()}};
+function vAuth(){$('#tabs').innerHTML='';const box='<div class="card" style="max-width:380px;margin:auto">';
+$('#v').innerHTML=rec?box+'<h3>Criar nova senha</h3><label>Nova senha (mín. 8 caracteres)</label><input id="np" type="password" minlength="8"><p><button class="btn" id="ns">Salvar senha</button></p></div>'
+:box+'<h3>Entrar no Hotelzinho</h3><label>E-mail</label><input id="ae" type="email" autocomplete="email"><label style="margin-top:8px">Senha</label><input id="ap" type="password" autocomplete="current-password"><p><button class="btn" id="li">Entrar</button> <button class="btn g" id="su">Criar conta</button></p><a href="#" id="fp">Esqueci a senha</a></div>';
+if(rec){$('#ns').onclick=async()=>{const{error}=await sb.auth.updateUser({password:$('#np').value});if(error)return gate(error.message,1);rec=false;gate('Senha atualizada.',1);setTimeout(()=>sb.auth.getSession().then(()=>{load().then(render)}),0)};return}
+const E=()=>$('#ae').value.trim(),P=()=>$('#ap').value,back=location.href.split('#')[0];
+$('#li').onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:E(),password:P()});if(error)gate('Não foi possível entrar: '+error.message,1)};
+$('#su').onclick=async()=>{const{error}=await sb.auth.signUp({email:E(),password:P(),options:{emailRedirectTo:back}});gate(error?error.message:'Conta criada. Confirme o e-mail que enviamos para poder entrar.',1)};
+$('#fp').onclick=async e=>{e.preventDefault();const{error}=await sb.auth.resetPasswordForEmail(E(),{redirectTo:back});gate(error?error.message:'Se o e-mail existir, enviamos o link para criar uma nova senha.',1)}}
+if(CLOUD){sb.auth.onAuthStateChange((ev,ss)=>{if(ev==='PASSWORD_RECOVERY')rec=true;user=ss?ss.user:null;setTimeout(async()=>{if(user&&!rec)await load();else if(!user){S.pets=[];S.res=[];S.plan='free'}render()},0)});addEventListener('focus',()=>{if(user&&!rec)load().then(render)})}
+$('#up').onclick=async()=>{if(!CLOUD){S.plan=plus()?'free':'plus';save();render();document.getElementById('app').scrollIntoView();return}
+if(plus())return gate('Seu plano Plus está ativo. Para cancelar, use o link da fatura enviado pelo Asaas.',1);
+const nome=prompt('Nome completo:'),cpf=prompt('CPF ou CNPJ (somente números):');if(!nome||!cpf)return;
+const{data,error}=await sb.functions.invoke('criar-assinatura',{body:{nome,cpfCnpj:cpf}});if(error||!data||!data.link)return gate('Não foi possível criar a cobrança. Tente novamente.',1);window.open(data.link,'_blank','noopener')};
 render();
+(()=>{const rm=matchMedia('(prefers-reduced-motion:reduce)').matches,pg=document.createElement('div');pg.id='pg';document.body.appendChild(pg);
+const nav=$('nav.top'),fc=[...document.querySelectorAll('.fc')],hero=$('.hero'),mx={x:0,y:0};
+const upd=()=>fc.forEach((c,i)=>{const d=(i+1)*9,sy=-scrollY*(.05+i*.03);c.style.transform=`translate3d(${mx.x*d}px,${mx.y*d+sy}px,0)`});
+const onS=()=>{const m=document.documentElement.scrollHeight-innerHeight;pg.style.width=(m>0?scrollY/m*100:0)+'%';nav.style.boxShadow=scrollY>8?'0 4px 18px rgba(0,0,0,.3)':'none';if(!rm)upd()};
+hero.addEventListener('mousemove',e=>{const r=hero.getBoundingClientRect();mx.x=(e.clientX-r.left)/r.width-.5;mx.y=(e.clientY-r.top)/r.height-.5;if(!rm)upd()});
+hero.addEventListener('mouseleave',()=>{mx.x=mx.y=0;if(!rm)upd()});
+addEventListener('scroll',onS,{passive:true});onS();
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.1});
+document.querySelectorAll('.shell,.plan,main h2,details').forEach(el=>{el.classList.add('rv');io.observe(el)})})();
 </script>
 </body>
 </html>
